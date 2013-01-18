@@ -14,6 +14,7 @@
 
 #import "PhysicsSprite.h"
 
+
 enum {
 	kTagParentNode = 1,
 };
@@ -25,6 +26,7 @@ enum {
 -(void) initPhysics;
 -(void) addNewSpriteAtPosition:(CGPoint)p;
 -(void) createMenu;
+
 @end
 
 @implementation HelloWorldLayer
@@ -59,6 +61,21 @@ enum {
 		
 		// create reset button
 		[self createMenu];
+        
+        
+        
+        //create a LevelHelperLoader object that has the data of the specified level
+        loader = [[LevelHelperLoader alloc] initWithContentOfFile:@"levelball"];
+        
+        //create all objects from the level file and adds them to the cocos2d layer (self)
+        [loader addObjectsToWorld:world cocos2dLayer:self];
+        
+        //checks if the level has physics boundaries
+        if([loader hasPhysicBoundaries])
+        {
+            //if it does, it will create the physic boundaries
+            [loader createPhysicBoundaries:world]; 
+        }
 		
 		//Set up sprite
 		
@@ -257,8 +274,9 @@ enum {
 }
 
 -(void) update: (ccTime) dt
-{
-	//It is recommended that a fixed time step is used with Box2D for stability
+{   
+    
+    //It is recommended that a fixed time step is used with Box2D for stability
 	//of the simulation, however, we are using a variable time step here.
 	//You need to make an informed choice, the following URL is useful
 	//http://gafferongames.com/game-physics/fix-your-timestep/
@@ -268,7 +286,27 @@ enum {
 	
 	// Instruct the world to perform a single step of simulation. It is
 	// generally best to keep the time step and iterations fixed.
-	world->Step(dt, velocityIterations, positionIterations);	
+	world->Step(dt, velocityIterations, positionIterations);
+    
+    
+    //Iterate over the bodies in the physics world
+	for (b2Body* b = world->GetBodyList(); b; b = b->GetNext())
+	{
+		if (b->GetUserData() != NULL)
+        {
+			//Synchronize the AtlasSprites position and rotation with the corresponding body
+			CCSprite *myActor = (CCSprite*)b->GetUserData();
+            
+            if(myActor != 0)
+            {
+                //THIS IS VERY IMPORTANT - GETTING THE POSITION FROM BOX2D TO COCOS2D
+                myActor.position = [LevelHelperLoader metersToPoints:b->GetPosition()];
+                myActor.rotation = -1 * CC_RADIANS_TO_DEGREES(b->GetAngle());
+            }
+            
+        }
+	}
+    
 }
 
 - (void)ccTouchesEnded:(NSSet *)touches withEvent:(UIEvent *)event
